@@ -6,6 +6,8 @@
 
 #include "file_handler.hpp"
 
+namespace knn_finder {
+
 struct item_record {
 	unsigned int idx;
 	std::vector<float> fvec;
@@ -14,5 +16,7 @@ struct item_record {
 };
 
 int read_mp(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, int *nc_ptr);
+
+} // knn_finder
 
 #endif // MP_HANDLER_HPP

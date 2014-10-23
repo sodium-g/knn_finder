@@ -13,6 +13,8 @@
 #define MALLOC_FAILED 5
 #define INDEX_OUT_OF_RANGE 6
 
+namespace knn_finder {
+
 class file_reader {
 public:
 	file_reader(bool is_gzip=false);
@@ -28,5 +30,7 @@ private:
 };
 
 void check_error(int res);
+
+} // knn_finder
 
 #endif // FILE_HANDLER_HPP

@@ -5,6 +5,8 @@
 
 #include "mp_handler.hpp"
 
+namespace knn_finder {
+
 int read_mp(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, int *nc_ptr) {
 	std::vector<item_record> records;
 	{ // Block to destruct the file read buffer after copied the content to the records.
@@ -46,3 +48,5 @@ int read_mp(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, in
 
 	return 0;
 }
+
+} // knn_finder

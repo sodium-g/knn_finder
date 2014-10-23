@@ -2,6 +2,8 @@
 
 #include "file_handler.hpp"
 
+namespace knn_finder {
+
 file_reader::file_reader(bool is_gzip) : ifs(), decomp(), sbuf(), is(&sbuf) {
 	if (is_gzip) sbuf.push(decomp);
 	sbuf.push(ifs);
@@ -45,3 +47,5 @@ void check_error(int res) {
 	}
 	exit(res);
 }
+
+} // knn_finder

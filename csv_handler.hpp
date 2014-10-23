@@ -12,6 +12,8 @@
 #define OUT_SEP "\t"
 #endif
 
+namespace knn_finder {
+
 int read_csv(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, int *nc_ptr);
 
 template<typename T>
@@ -29,5 +31,7 @@ int write_csv(const char *filename, const T *mat, int nr, int nc) {
 
 	return 0;
 }
+
+} // knn_finder
 
 #endif // CSV_HANDLER_HPP

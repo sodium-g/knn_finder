@@ -5,7 +5,7 @@
 
 #include "csv_handler.hpp"
 
-typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+namespace knn_finder {
 
 bool is_numeric(const std::string& str) {
 	static const boost::regex ex("[+-]?\\d+(\\.\\d+)?([Ee][+-]?\\d+)?");
@@ -22,6 +22,7 @@ int read_csv(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, i
 	std::vector<float> vec;
 	boost::char_separator<char> sep(IN_SEP);
 
+	typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
 	while (std::getline(is, line)) {
 		tokenizer tok(line, sep);
 		int i = 0;
@@ -48,3 +49,5 @@ int read_csv(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, i
 
 	return 0;
 }
+
+} // knn_finder
