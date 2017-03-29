@@ -127,7 +127,7 @@ __global__ void shift_origin(float *mat, int pitch, int width, int height) {
 	}
 }
 
-void find_knn(float *h_mat, int mat_width, int mat_height, int k, float *h_dist, int *h_idx, int is_sparse) {
+void find_knn(float *h_mat, int mat_width, int mat_height, int k, float *h_dist, int *h_idx) {
 	int max_width = MAX_WIDTH, max_height = MAX_HEIGHT;
 
 	// Our kernels do not use shared memory explicitly,
@@ -195,6 +195,115 @@ void find_knn(float *h_mat, int mat_width, int mat_height, int k, float *h_dist,
 	cudaFree(d_mat);
 }
 
+void find_knn_sparse(float *h_mat, int mat_width, int mat_height, int k, float *h_dist, int *h_idx) {
+	int max_width = MAX_WIDTH;
+
+	// Our kernels do not use shared memory explicitly,
+	// but "PreferShared" setting performs well empirically.
+	// This may be because cuBLAS uses shared memory.
+//	check_cuda_error(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
+
+	float *d_mat;
+	size_t mat_byte_pitch;
+	check_cuda_error(cudaMallocPitch((void **)&d_mat, &mat_byte_pitch, mat_width * sizeof(float), mat_height), mat_width * sizeof(float) * mat_height);
+	size_t mat_pitch = mat_byte_pitch / sizeof(float);
+
+	check_cuda_error(cudaMemcpy2D(d_mat, mat_byte_pitch, h_mat, mat_width * sizeof(float), mat_width * sizeof(float), mat_height, cudaMemcpyHostToDevice));
+
+	dim3 num_blocks((mat_width + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK, 1, 1);
+	dim3 threads_per_block(THREADS_PER_BLOCK, 1, 1);
+	normalise<<<num_blocks, threads_per_block>>>(d_mat, mat_pitch, mat_width, mat_height);
+
+	cusparseHandle_t handle;
+	check_cusparse_error(cusparseCreate(&handle));
+	cusparseMatDescr_t descr;
+	check_cusparse_error(cusparseCreateMatDescr(&descr));
+	cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);
+	cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);
+
+	int *mat_nnz_row;
+	int mat_nnz;
+	check_cuda_error(cudaMalloc((void **)&mat_nnz_row, mat_width * sizeof(int)), mat_width * sizeof(int));
+
+	check_cusparse_error(cusparseSnnz(handle, CUSPARSE_DIRECTION_ROW, mat_width, mat_height, descr, d_mat, mat_pitch, mat_nnz_row, &mat_nnz));
+
+	float *d_mat_val;
+	int *d_mat_row;
+	int *d_mat_col;
+	check_cuda_error(cudaMalloc((void **)&d_mat_val, mat_nnz * sizeof(float)), mat_nnz * sizeof(float));
+	check_cuda_error(cudaMalloc((void **)&d_mat_row, (mat_width + 1) * sizeof(int)), (mat_width + 1) * sizeof(int));
+	check_cuda_error(cudaMalloc((void **)&d_mat_col, mat_nnz * sizeof(int)), mat_nnz * sizeof(int));
+
+	check_cusparse_error(cusparseSdense2csr(handle, mat_width, mat_height, descr, d_mat, mat_pitch, mat_nnz_row, d_mat_val, d_mat_row, d_mat_col));
+
+	cudaFree(mat_nnz_row);
+	cudaFree(d_mat);
+
+	int *d_dist_row;
+	int dist_nnz;
+	check_cuda_error(cudaMalloc((void **)&d_dist_row, (mat_width + 1) * sizeof(int)), (mat_width + 1) * sizeof(int));
+
+	check_cusparse_error(cusparseXcsrgemmNnz(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_TRANSPOSE, mat_width, mat_width, mat_height,
+		descr, mat_nnz, d_mat_row, d_mat_col,
+		descr, mat_nnz, d_mat_row, d_mat_col,
+		descr, d_dist_row, &dist_nnz));
+
+	float *d_dist_val;
+	int *d_dist_col;
+	check_cuda_error(cudaMalloc((void **)&d_dist_val, dist_nnz * sizeof(float)), dist_nnz * sizeof(float));
+	check_cuda_error(cudaMalloc((void **)&d_dist_col, dist_nnz * sizeof(int)), dist_nnz * sizeof(int));
+
+	check_cusparse_error(cusparseScsrgemm(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_TRANSPOSE, mat_width, mat_width, mat_height,
+		descr, mat_nnz, d_mat_val, d_mat_row, d_mat_col,
+		descr, mat_nnz, d_mat_val, d_mat_row, d_mat_col,
+		descr, d_dist_val, d_dist_row, d_dist_col));
+
+	cudaFree(d_mat_col);
+	cudaFree(d_mat_row);
+	cudaFree(d_mat_val);
+
+	float *d_dist;
+	size_t dist_byte_pitch;
+	check_cuda_error(cudaMallocPitch((void **)&d_dist, &dist_byte_pitch, mat_width * sizeof(float), mat_width), mat_width * sizeof(float) * mat_width);
+	size_t dist_pitch = dist_byte_pitch / sizeof(float);
+
+	check_cusparse_error(cusparseScsr2dense(handle, mat_width, mat_width, descr, d_dist_val, d_dist_row, d_dist_col, d_dist, dist_pitch));
+
+	cudaFree(d_dist_col);
+	cudaFree(d_dist_val);
+	cudaFree(d_dist_row);
+
+	cusparseDestroyMatDescr(descr);
+	cusparseDestroy(handle);
+
+//	cublasHandle_t handle;
+//	check_cublas_error(cublasCreate(&handle));
+//	const float alpha = -1.0;
+
+	int *d_idx;
+	size_t idx_byte_pitch;
+	check_cuda_error(cudaMallocPitch((void **)&d_idx, &idx_byte_pitch, max_width * sizeof(int), k), max_width * sizeof(int) * k);
+	size_t idx_pitch = idx_byte_pitch / sizeof(int);
+
+	for (int i = 0; i < mat_width; i += max_width) {
+		int actual_width = std::min<int>(max_width, mat_width - i);
+		dim3 num_slice_blocks((actual_width + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK, 1, 1);
+
+		sort<<<num_slice_blocks, threads_per_block>>>(&d_dist[i], dist_pitch, d_idx, idx_pitch, actual_width, k);
+		insert<<<num_slice_blocks, threads_per_block>>>(&d_dist[i], dist_pitch, d_idx, idx_pitch, actual_width, actual_width, k, 0);
+
+		shift_origin<<<num_slice_blocks, threads_per_block>>>(&d_dist[i], dist_pitch, actual_width, k);
+
+		check_cuda_error(cudaMemcpy2D(&h_dist[i], mat_width * sizeof(float), &d_dist[i], dist_byte_pitch, actual_width * sizeof(float), k, cudaMemcpyDeviceToHost));
+		check_cuda_error(cudaMemcpy2D(&h_idx[i], mat_width * sizeof(int), d_idx, idx_byte_pitch, actual_width * sizeof(int), k, cudaMemcpyDeviceToHost));
+
+		std::cout << "Processed " << i + actual_width << " records." << std::endl;
+	}
+
+	cudaFree(d_idx);
+	cudaFree(d_dist);
+}
+
 void print_props(int device) {
 	cudaDeviceProp prop;
 	check_cuda_error(cudaGetDeviceProperties(&prop, device));
@@ -222,6 +331,13 @@ void check_cublas_error(cublasStatus_t res) {
 	if (res) {
 		std::cerr << "cuBLAS runtime error: " << res << std::endl;
 		exit(CUBLAS_ERROR);
+	}
+}
+
+void check_cusparse_error(cusparseStatus_t res) {
+	if (res) {
+		std::cerr << "cuSPARSE runtime error: " << res << std::endl;
+		exit(CUSPARSE_ERROR);
 	}
 }
 
