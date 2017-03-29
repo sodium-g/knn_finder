@@ -26,9 +26,10 @@ int main(int argc, char **argv) {
 		("help,h", "display usage")
 		("infile,i", po::value<std::string>(), "input filename (mandatory)")
 		("outfile,o", po::value<std::string>(), "basename (wo extension) of output files")
-		("in-pack,p", "input file is in msgpack format (csv text otherwise)")
+		("in-pack,p", "input file is in MessagePack format (CSV text otherwise)")
 		("in-gzip,z", "input file is gzip compressed")
 		("neigh,k", po::value<int>(), "nearest neighbours to find")
+		("sparse,s", "input matrix is sparse")
 	;
 
 	po::variables_map vm;
@@ -83,7 +84,7 @@ int main(int argc, char **argv) {
 	}
 
 	std::cout << std::endl << "Searching k-nearest neighbours..." << std::endl;
-	find_knn(mat, mat_width, mat_height, k, dist, idx);
+	find_knn(mat, mat_width, mat_height, k, dist, idx, vm.count("sparse"));
 
 	std::cout << std::endl << "Writing search result (distance) to " << dist_filename << std::endl;
 	check_error(write_csv<float>(dist_filename.c_str(), dist, mat_width, k));

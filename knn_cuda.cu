@@ -127,7 +127,7 @@ __global__ void shift_origin(float *mat, int pitch, int width, int height) {
 	}
 }
 
-void find_knn(float *h_mat, int mat_width, int mat_height, int k, float *h_dist, int *h_idx) {
+void find_knn(float *h_mat, int mat_width, int mat_height, int k, float *h_dist, int *h_idx, int is_sparse) {
 	int max_width = MAX_WIDTH, max_height = MAX_HEIGHT;
 
 	// Our kernels do not use shared memory explicitly,

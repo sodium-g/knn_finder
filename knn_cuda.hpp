@@ -3,6 +3,7 @@
 
 #include "cuda.h"
 #include "cublas_v2.h"
+#include "cusparse.h"
 
 #define CUDA_ERROR 10
 #define CUDA_MALLOC_FAILED 11
@@ -20,7 +21,7 @@
 
 namespace knn_finder {
 
-void find_knn(float *h_mat, int mat_width, int mat_height, int k, float *h_dist, int *h_idx);
+void find_knn(float *h_mat, int mat_width, int mat_height, int k, float *h_dist, int *h_idx, int is_sparse);
 
 void print_props(int device=0);
 
