@@ -11,7 +11,12 @@ int read_mp(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, in
 	std::vector<item_record> records;
 	{ // Block to destruct the file read buffer after copied the content to the records.
 		file_reader reader(is_gzip);
-		if (!reader.open(filename, true)) return FILE_OPEN_FAILED;
+		try{
+			reader.open(filename, true);
+		}
+		catch (const std::exception& e){
+			return FILE_OPEN_FAILED;
+		}
 		std::istream& is = reader.get();
 
 		// Seemingly unnecessary parentheses surrounding the 1st parameter is to stop
@@ -22,11 +27,11 @@ int read_mp(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, in
 
 		std::size_t offset = 0;
 		while (offset < buf.size()) {
-			msgpack::unpacked msg;
-			msgpack::unpack(&msg, &buf[0], buf.size(), &offset);
+			msgpack::object_handle msg;
+			msgpack::unpack(msg, &buf[0], buf.size(), offset);
 			msgpack::object obj(msg.get());
 			item_record record;
-			obj.convert(&record);
+			obj.convert(record);
 			records.push_back(record);
 		}
 	}

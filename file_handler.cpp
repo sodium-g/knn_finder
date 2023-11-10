@@ -9,11 +9,10 @@ file_reader::file_reader(bool is_gzip) : ifs(), decomp(), sbuf(), is(&sbuf) {
 	sbuf.push(ifs);
 }
 
-bool file_reader::open(const char *filename, bool is_binary) {
+void file_reader::open(const char *filename, bool is_binary) {
 	std::ios_base::openmode mode = std::ios_base::in;
 	if (is_binary) mode |= std::ios_base::binary;
 	ifs.open(filename, mode);
-	return ifs;
 }
 
 std::istream& file_reader::get() {

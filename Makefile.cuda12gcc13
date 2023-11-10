@@ -1,6 +1,7 @@
 CXX = /usr/bin/g++
-NVCC = /usr/local/cuda/bin/nvcc
+NVCC = nvcc
 CFLAGS = -O2
+CUDAFLAGS = -ccbin=/opt/cuda/bin
 LDFLAGS =
 LDLIBS = -lcuda -lcublas -lboost_regex -lboost_iostreams -lboost_program_options -lmsgpackc
 BUILD_DIR = build
@@ -34,10 +35,10 @@ $(HANDLER_OBJS): $(BUILD_DIR)/%.o: %.cpp %.hpp
 $(BUILD_DIR)/csv_handler.o $(BUILD_DIR)/mp_handler.o: file_handler.hpp
 
 $(KERNEL_OBJS): $(BUILD_DIR)/%.o: %.cu %.hpp
-	$(NVCC) $(CFLAGS) -c -o $@ $<
+	$(NVCC) $(CFLAGS) $(CUDAFLAGS) -c -o $@ $<
 
 $(BUILD_DIR)/knn_finder.o: knn_finder.cpp $(HEADERS)
-	$(NVCC) $(CFLAGS) -c -o $@ $<
+	$(NVCC) $(CFLAGS) $(CUDAFLAGS) -c -o $@ $<
 
 $(OBJS): | $(BUILD_DIR)
 
