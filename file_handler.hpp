@@ -19,7 +19,7 @@ class file_reader {
 public:
 	file_reader(bool is_gzip=false);
 
-	bool open(const char *filename, bool is_binary=false);
+	void open(const char *filename, bool is_binary=false);
 	std::istream& get();
 
 private:

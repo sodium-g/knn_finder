@@ -14,7 +14,11 @@ bool is_numeric(const std::string& str) {
 
 int read_csv(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, int *nc_ptr) {
 	file_reader reader(is_gzip);
-	if (!reader.open(filename, is_gzip)) return FILE_OPEN_FAILED;
+	try{
+		reader.open(filename, is_gzip);
+	}catch(const std::exception& e){
+		return FILE_OPEN_FAILED;
+	}
 	std::istream& is = reader.get();
 
 	int nr = 0, nc = 0;
