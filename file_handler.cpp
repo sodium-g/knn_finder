@@ -13,7 +13,7 @@ bool file_reader::open(const char *filename, bool is_binary) {
 	std::ios_base::openmode mode = std::ios_base::in;
 	if (is_binary) mode |= std::ios_base::binary;
 	ifs.open(filename, mode);
-	return ifs;
+	return ifs.is_open();
 }
 
 std::istream& file_reader::get() {

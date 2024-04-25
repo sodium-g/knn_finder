@@ -2,7 +2,7 @@ CXX = /usr/bin/g++
 NVCC = /usr/local/cuda/bin/nvcc
 CFLAGS = -O2
 LDFLAGS =
-LDLIBS = -lcuda -lcublas -lboost_regex -lboost_iostreams -lboost_program_options -lmsgpack
+LDLIBS = -lcuda -lcublas -lboost_regex -lboost_iostreams -lboost_program_options -lmsgpackc
 BUILD_DIR = build
 PREFIX = /usr/local
 

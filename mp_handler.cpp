@@ -22,11 +22,11 @@ int read_mp(const char *filename, bool is_gzip, float **mat_ptr, int *nr_ptr, in
 
 		std::size_t offset = 0;
 		while (offset < buf.size()) {
-			msgpack::unpacked msg;
-			msgpack::unpack(&msg, &buf[0], buf.size(), &offset);
+			msgpack::object_handle msg;
+			msgpack::unpack(msg, &buf[0], buf.size(), offset);
 			msgpack::object obj(msg.get());
 			item_record record;
-			obj.convert(&record);
+			obj.convert(record);
 			records.push_back(record);
 		}
 	}
